@@ -3,10 +3,11 @@
 # ================================================================
 #   Copyright (C) 2022 . All rights reserved.
 #
-#   File name   : read_shapes_tfrecord.py
+#   File name   : read_tfrecord.py
 #   Author      : ronen halevy
 #   Created date:  4/16/22
-#   Description :
+#   Description : Reads a tfrecord file and renders some examples with annotations. The tfrecord entry is expected to
+#   hold an image, a bounding box and a class lable
 #
 # ================================================================
 
