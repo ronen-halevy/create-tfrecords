@@ -15,8 +15,7 @@ import glob
 import json
 import tensorflow as tf
 import numpy as np
-from absl import app, flags
-from absl.flags import FLAGS
+import argparse
 
 
 class ExampleProtos:
@@ -67,7 +66,7 @@ def create_example(image, example):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def create_tfrecords(input_annotation_file, tfrecords_out_dir, examples_limit=None):
+def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, examples_limit=None):
     with open(input_annotation_file, 'r') as f:
         annotations = json.load(f)['annotations']
 
@@ -93,7 +92,7 @@ def create_tfrecords(input_annotation_file, tfrecords_out_dir, examples_limit=No
                 tfrecords_out_dir + '/file_%.2i-%i.tfrec' % (tfrec_num, len(samples))
         ) as writer:
             for sample in samples:
-                image_path = sample['image_path']
+                image_path = images_dir + sample['image_filename']
                 image = tf.io.decode_jpeg(tf.io.read_file(image_path))
                 example = create_example(image, sample)
                 writer.write(example.SerializeToString())
@@ -102,18 +101,24 @@ def create_tfrecords(input_annotation_file, tfrecords_out_dir, examples_limit=No
 
 
 def main():
-    flags.DEFINE_string('outdir', 'dataset/tfrecords', 'path to tfrecords outfiles')
-    flags.DEFINE_string('annotations', 'dataset/annotations/annotations.json', 'path to anonotations infile')
-    flags.DEFINE_integer('limit', None, 'limit on max input examples')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--examples_limit", type=int, default=None,
+                        help="limit to num of processed examples")
 
-    tfrecords_out_dir = FLAGS.outdir
-    input_annotation_file = FLAGS.annotations
-    examples_limit = FLAGS.limit
-    create_tfrecords(input_annotation_file, tfrecords_out_dir, examples_limit)
+    parser.add_argument("--out_dir", type=str, default='./dataset/tfrecords',
+                        help='output dir')
+
+    parser.add_argument("--images_dir", type=str, default='/home/ronen/PycharmProjects/shapes-dataset/dataset/images/',
+                        help='input base_dir')
+
+    parser.add_argument("--in_annotations", type=str,
+                        default='/home/ronen/PycharmProjects/shapes-dataset/dataset/annotations/annotations.json',
+                        help='input annotations meta data')
+    args = parser.parse_args()
+    out_dir = args.out_dir
+    images_dir = args.images_dir
+    create_tfrecords(args.in_annotations, images_dir, out_dir, args.examples_limit)
 
 
 if __name__ == '__main__':
-    try:
-        app.run(main)
-    except SystemExit:
-        pass
+    main()
