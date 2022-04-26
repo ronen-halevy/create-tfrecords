@@ -94,6 +94,35 @@ def draw_text_on_bounding_box(image, ymin, xmin, color, display_str_list=(), fon
     return image
 
 
+def render_dataset_examples(dataset, class_file):
+    data = dataset.take(1)
+    image, y = next(iter(data))
+
+    y = y[y[..., 2].numpy() != 0]  # remove padding
+    image_pil = Image.fromarray(np.uint8(image.numpy() * 255))
+    annotated_bbox_image = draw_bounding_box(image_pil, y[..., 0:4], color=(255, 255, 0),
+                                             thickness=3)
+
+    colors = list(ImageColor.colormap.values())
+    color = colors[0]
+    class_text = np.loadtxt(class_file, dtype=str)
+
+    classes = class_text[y[..., 4].numpy().astype(int)]
+    annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, y[..., 1].numpy(), y[..., 0].numpy(), color,
+                                                     classes, font_size=15)
+    return annotated_text_image
+
+def read_dataset(class_file, tfrecords_dir, max_boxes):
+    class_table = tf.lookup.StaticHashTable(tf.lookup.TextFileInitializer(
+        filename=class_file, key_dtype=tf.string, key_index=0, value_dtype=tf.int64,
+        value_index=tf.lookup.TextFileIndex.LINE_NUMBER, delimiter="\n"), default_value=-1)
+
+    files = tf.data.Dataset.list_files(f"{tfrecords_dir}/*.tfrec")
+
+    dataset = files.flat_map(tf.data.TFRecordDataset)
+    dataset = dataset.map(lambda tfrecord: parse_tfrecord_fn(tfrecord, class_table, max_boxes, size=416))
+    return dataset
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -113,32 +142,8 @@ def main():
 
     class_file = args.classes
     max_boxes = args.max_boxes
-
-    class_table = tf.lookup.StaticHashTable(tf.lookup.TextFileInitializer(
-        filename=class_file, key_dtype=tf.string, key_index=0, value_dtype=tf.int64,
-        value_index=tf.lookup.TextFileIndex.LINE_NUMBER, delimiter="\n"), default_value=-1)
-
-    files = tf.data.Dataset.list_files(f"{tfrecords_dir}/*.tfrec")
-
-    dataset = files.flat_map(tf.data.TFRecordDataset)
-    dataset = dataset.map(lambda tfrecord: parse_tfrecord_fn(tfrecord, class_table, max_boxes, size=416))
-
-    data = dataset.take(1)
-    image, y = next(iter(data))
-
-    y = y[y[..., 2].numpy() != 0]  # remove padding
-    image_pil = Image.fromarray(np.uint8(image.numpy() * 255))
-    annotated_bbox_image = draw_bounding_box(image_pil, y[..., 0:4], color=(255, 255, 0),
-                                             thickness=3)
-
-    colors = list(ImageColor.colormap.values())
-    color = colors[0]
-    class_text = np.loadtxt(class_file, dtype=str)
-
-    classes = class_text[y[..., 4].numpy().astype(int)]
-    annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, y[..., 1].numpy(), y[..., 0].numpy(), color,
-                                                     classes, font_size=15)
-
+    dataset = read_dataset(class_file, tfrecords_dir, max_boxes)
+    annotated_text_image = render_dataset_examples(dataset, class_file)
     plt.imshow(annotated_text_image)
     plt.show()
 
