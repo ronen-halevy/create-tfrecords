@@ -128,5 +128,8 @@ def main():
     create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, examples_limit)
 
 
+def test(ee):
+    print(ee)
+
 if __name__ == '__main__':
     main()
