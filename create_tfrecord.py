@@ -115,7 +115,7 @@ def main():
                         default='/home/ronen/PycharmProjects/shapes-dataset/dataset/annotations/annotations.json',
                         help='input annotations meta data')
 
-    parser.add_argument("--examples_in_tfrec", type=str,
+    parser.add_argument("--examples_in_file", type=str,
                         default=4096,
                         help='number of examples in a tfrec file')
 
