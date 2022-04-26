@@ -66,12 +66,12 @@ def create_example(image, example):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, examples_in_file, examples_limit=None):
+def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec_file_size, examples_limit=None):
     with open(input_annotation_file, 'r') as f:
         annotations = json.load(f)['annotations']
 
     num_examples = min(len(annotations), examples_limit or float('inf'))
-    num_samples_in_tfrecord = min(examples_in_file, num_examples)
+    num_samples_in_tfrecord = min(tfrec_file_size, num_examples)
     num_tfrecords = num_examples // num_samples_in_tfrecord
     if num_examples % num_samples_in_tfrecord:
         num_tfrecords += 1
@@ -115,7 +115,7 @@ def main():
                         default='/home/ronen/PycharmProjects/shapes-dataset/dataset/annotations/annotations.json',
                         help='input annotations meta data')
 
-    parser.add_argument("--examples_in_file", type=str,
+    parser.add_argument("--tfrec_file_size", type=str,
                         default=4096,
                         help='number of examples in a tfrec file')
 
@@ -123,9 +123,9 @@ def main():
     in_annotations = args.in_annotations
     out_dir = args.out_dir
     images_dir = args.images_dir
-    examples_in_file = args.examples_in_file
+    tfrec_file_size = args.tfrec_file_size
     examples_limit = args.examples_limit
-    create_tfrecords(in_annotations, images_dir, out_dir, examples_in_file, examples_limit)
+    create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, examples_limit)
 
 
 if __name__ == '__main__':
