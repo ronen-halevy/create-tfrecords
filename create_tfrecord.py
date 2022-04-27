@@ -52,6 +52,15 @@ class ExampleProtos:
 
 
 def create_example(image, example):
+    """
+
+    :param image:
+    :type image:
+    :param example:
+    :type example:
+    :return:
+    :rtype:
+    """
     boxes = np.reshape(example['bboxes'], -1)
     label = [entry['label'] for entry in example['objects']]
 
@@ -67,6 +76,21 @@ def create_example(image, example):
 
 
 def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec_file_size, examples_limit=None):
+    """
+
+    :param input_annotation_file:
+    :type input_annotation_file:
+    :param images_dir:
+    :type images_dir:
+    :param tfrecords_out_dir:
+    :type tfrecords_out_dir:
+    :param tfrec_file_size:
+    :type tfrec_file_size:
+    :param examples_limit:
+    :type examples_limit:
+    :return:
+    :rtype:
+    """
     with open(input_annotation_file, 'r') as f:
         annotations = json.load(f)['annotations']
 
@@ -97,8 +121,6 @@ def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec
                 example = create_example(image, sample)
                 writer.write(example.SerializeToString())
 
-    print('Done!')
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -126,10 +148,8 @@ def main():
     tfrec_file_size = args.tfrec_file_size
     examples_limit = args.examples_limit
     create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, examples_limit)
+    print('Done!')
 
-
-def test(ee):
-    print(ee)
 
 if __name__ == '__main__':
     main()
