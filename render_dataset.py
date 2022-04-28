@@ -64,7 +64,7 @@ def draw_text_on_bounding_box(image, ymin, xmin, color, display_str_list=(), fon
     return image
 
 
-def draw_bounding_box(image, boxes, color, thickness=3):
+def draw_bounding_box(image, boxes, color, thickness=1):
     """
     :param image:
     :type image:
@@ -103,7 +103,7 @@ def render_dataset_examples(dataset, class_file):
     y = y[y[..., 2].numpy() != 0]  # remove padding
     image_pil = Image.fromarray(np.uint8(image.numpy() * 255))
     annotated_bbox_image = draw_bounding_box(image_pil, y[..., 0:4], color=(255, 255, 0),
-                                             thickness=3)
+                                             thickness=1)
 
     colors = list(ImageColor.colormap.values())
     color = colors[0]
