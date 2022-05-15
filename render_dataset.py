@@ -101,8 +101,13 @@ def render_dataset_examples(dataset, class_file):
     image, y = next(iter(data))
 
     y = y[y[..., 2].numpy() != 0]  # remove padding
+    import tensorflow as tf
+    height, width = image.numpy().shape[0], image.numpy().shape[1]
+    rescale_bbox = tf.tile(tf.convert_to_tensor([[width, height, width, height]], tf.float32), [y.shape[0], 1])
+    bbox = tf.round(tf.math.multiply(y[:, 0:4], rescale_bbox))
+
     image_pil = Image.fromarray(np.uint8(image.numpy() * 255))
-    annotated_bbox_image = draw_bounding_box(image_pil, y[..., 0:4], color=(255, 255, 0),
+    annotated_bbox_image = draw_bounding_box(image_pil, bbox[..., 0:4], color=(255, 255, 0),
                                              thickness=1)
 
     colors = list(ImageColor.colormap.values())
@@ -110,6 +115,7 @@ def render_dataset_examples(dataset, class_file):
     class_text = np.loadtxt(class_file, dtype=str)
 
     classes = class_text[y[..., 4].numpy().astype(int)]
-    annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, y[..., 1].numpy(), y[..., 0].numpy(), color,
+    annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, bbox[..., 1].numpy(), bbox[..., 0].numpy(),
+                                                     color,
                                                      classes, font_size=15)
     return annotated_text_image
