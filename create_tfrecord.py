@@ -62,7 +62,7 @@ def create_example(image, example):
     :rtype:
     """
     boxes = np.reshape(example['bboxes'], -1)
-    label = [entry['label'] for entry in example['objects']]
+    label = [entry for entry in example['labels']]
 
     feature = {
         'image/encoded': ExampleProtos.image_feature(image),
