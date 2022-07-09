@@ -75,7 +75,7 @@ def create_example(image, example):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec_file_size, examples_limit=None):
+def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec_file_size, train_split, val_split, examples_limit=None):
     """
 
     :param input_annotation_file:
@@ -91,35 +91,49 @@ def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec
     :return:
     :rtype:
     """
+
+    train_dir = f'{tfrecords_out_dir}/train'
+    val_dir = f'{tfrecords_out_dir}/val'
+    test_dir = f'{tfrecords_out_dir}/test'
+
+    for out_dir in [train_dir, val_dir, test_dir]:
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        else:
+            to_del_files = glob.glob(f'{out_dir}/*.tfrec')
+            [os.remove(f) for f in to_del_files]
+
+
     with open(input_annotation_file, 'r') as f:
         annotations = json.load(f)['annotations']
 
     num_examples = min(len(annotations), examples_limit or float('inf'))
-    num_samples_in_tfrecord = min(tfrec_file_size, num_examples)
-    num_tfrecords = num_examples // num_samples_in_tfrecord
-    if num_examples % num_samples_in_tfrecord:
-        num_tfrecords += 1
+    train_size = int(train_split * num_examples)
+    val_size = int(val_split * num_examples)
+    test_size = num_examples - train_size - val_size
 
-    if not os.path.exists(tfrecords_out_dir):
-        os.makedirs(tfrecords_out_dir)
-    else:
-        to_del_files = glob.glob(f'{tfrecords_out_dir}/*.tfrec')
-        [os.remove(f) for f in to_del_files]
+    start_record = 0
+    for split_size, out_dir in zip([train_size, val_size, test_size], [train_dir, val_dir, test_dir]):
+        num_samples_in_tfrecord = min(tfrec_file_size, split_size)
+        num_tfrecords = split_size // num_samples_in_tfrecord
+        if split_size % num_samples_in_tfrecord:
+            num_tfrecords += 1
+        # split_annotations = annotations[start_record: min(start_record + num_tfrecords, len(annotations)-1)]
+        print(f'Starting! \nCreating {split_size} examples in {num_tfrecords} tfrecord files.')
+        print(f'Output dir: {tfrecords_out_dir}')
 
-    print(f'Starting! \nCreating {num_examples} examples in {num_tfrecords} tfrecord files.')
-    print(f'Output dir: {tfrecords_out_dir}')
+        for tfrec_num in range(num_tfrecords):
+            samples = annotations[((start_record+tfrec_num) * num_samples_in_tfrecord): ((start_record+tfrec_num + 1) * num_samples_in_tfrecord)]
 
-    for tfrec_num in range(num_tfrecords):
-        samples = annotations[(tfrec_num * num_samples_in_tfrecord): ((tfrec_num + 1) * num_samples_in_tfrecord)]
-
-        with tf.io.TFRecordWriter(
-                tfrecords_out_dir + '/file_%.2i-%i.tfrec' % (tfrec_num, len(samples))
-        ) as writer:
-            for sample in samples:
-                image_path = images_dir + sample['image_filename']
-                image = tf.io.decode_jpeg(tf.io.read_file(image_path))
-                example = create_example(image, sample)
-                writer.write(example.SerializeToString())
+            with tf.io.TFRecordWriter(
+                    f'{out_dir}/file_{tfrec_num:02}_{len(samples)}.tfrec'
+            ) as writer:
+                for sample in samples:
+                    image_path = images_dir + sample['image_filename']
+                    image = tf.io.decode_jpeg(tf.io.read_file(image_path))
+                    example = create_example(image, sample)
+                    writer.write(example.SerializeToString())
+        start_record = start_record + num_tfrecords
 
 
 def main():
@@ -141,13 +155,24 @@ def main():
                         default=4096,
                         help='number of examples in a tfrec file')
 
+    parser.add_argument("--train_split", type=float,
+                        default=0.7,
+                        help='train_split fraction')
+
+    parser.add_argument("--val_split", type=float,
+                        default=0.2,
+                        help='val_split fraction')
+
     args = parser.parse_args()
     in_annotations = args.in_annotations
     out_dir = args.out_dir
     images_dir = args.images_dir
     tfrec_file_size = args.tfrec_file_size
     examples_limit = args.examples_limit
-    create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, examples_limit)
+    train_split = args.train_split
+    val_split = args.val_split
+    test_split = max(0, 1-(train_split+val_split))
+    create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, train_split, val_split, examples_limit)
     print('Done!')
 
 

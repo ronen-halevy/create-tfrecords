@@ -56,10 +56,12 @@ def parse_tfrecord_fn(record, image_size, max_boxes, class_table=None):
                             tf.sparse.to_dense(example['image/object/bbox/ymax']),
                             labels], axis=1)
     else:
+        labels = tf.cast(tf.fill([x_train.shape[0], 1], 1). tf.float32)
         y_train = tf.stack([tf.sparse.to_dense(example['image/object/bbox/xmin']),
                             tf.sparse.to_dense(example['image/object/bbox/ymin']),
                             tf.sparse.to_dense(example['image/object/bbox/xmax']),
-                            tf.sparse.to_dense(example['image/object/bbox/ymax'])
+                            tf.sparse.to_dense(example['image/object/bbox/ymax']),
+                            labels
                             ], axis=1)
 
     paddings = [[0, max_boxes - tf.shape(y_train)[0]], [0, 0]]
@@ -95,7 +97,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--tfrecords_dir", type=str,
-                        default='/home/ronen/PycharmProjects/create-tfrecords/dataset/tfrecords',
+                        default='/home/ronen/PycharmProjects/create-tfrecords/dataset/tfrecords/train',
                         help='path to tfrecords files')
     parser.add_argument("--limit", type=int, default=None,
                         help='limit on max input examples')
