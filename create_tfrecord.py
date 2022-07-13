@@ -70,7 +70,7 @@ def create_example(image, example):
         'image/object/bbox/ymin': ExampleProtos.float_feature_list(boxes[1::4].tolist()),
         'image/object/bbox/xmax': ExampleProtos.float_feature_list(boxes[2::4].tolist()),
         'image/object/bbox/ymax': ExampleProtos.float_feature_list(boxes[3::4].tolist()),
-        'image/object/class/label': ExampleProtos.bytes_feature_list(label),
+        'image/object/class/text': ExampleProtos.bytes_feature_list(label),
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 

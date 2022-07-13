@@ -35,7 +35,7 @@ def parse_tfrecord_fn(record, image_size, max_boxes, class_table=None):
     """
     feature_description = {
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
-        "image/object/class/label": tf.io.VarLenFeature(tf.string),
+        "image/object/class/text": tf.io.VarLenFeature(tf.string),
         "image/object/bbox/xmin": tf.io.VarLenFeature(tf.float32),
         "image/object/bbox/ymin": tf.io.VarLenFeature(tf.float32),
         "image/object/bbox/xmax": tf.io.VarLenFeature(tf.float32),
@@ -47,7 +47,7 @@ def parse_tfrecord_fn(record, image_size, max_boxes, class_table=None):
     x_train = tf.image.resize(x_train, (image_size, image_size)) / 255
 
     labels = tf.sparse.to_dense(
-        example.get('image/object/class/label', ','), default_value='')
+        example.get('image/object/class/text', ','), default_value='')
     if class_table:
         labels = tf.cast(class_table.lookup(labels), tf.float32)
         y_train = tf.stack([tf.sparse.to_dense(example['image/object/bbox/xmin']),
