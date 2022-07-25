@@ -1,0 +1,8 @@
+---
+examples_limit: null #  limit tp num of processed examples - cut off all above
+out_dir default: './dataset/tfrecords' #output dir
+images_dir: ../shapes-dataset/dataset/images/ # input base_dir
+in_annotations: ../shapes-dataset/dataset/annotations/annotations.yaml # input annotations meta data
+tfrec_file_size: 4096 # number of examples in each tfrec file
+train_split: 0.7 # train_split fraction
+val_split: 0.2 #val_split fraction. test_split takes the remainder

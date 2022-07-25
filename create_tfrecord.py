@@ -12,7 +12,7 @@
 
 import os
 import glob
-import json
+import yaml
 import tensorflow as tf
 import numpy as np
 import argparse
@@ -75,11 +75,17 @@ def create_example(image, example):
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec_file_size, train_split, val_split, examples_limit=None):
+def create_tfrecords(input_annotations_file,
+                     images_dir,
+                     tfrecords_out_dir,
+                     tfrec_file_size,
+                     train_split,
+                     val_split,
+                     examples_limit=None):
     """
 
-    :param input_annotation_file:
-    :type input_annotation_file:
+    :param input_annotations_file:
+    :type input_annotations_file:
     :param images_dir:
     :type images_dir:
     :param tfrecords_out_dir:
@@ -103,9 +109,8 @@ def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec
             to_del_files = glob.glob(f'{out_dir}/*.tfrec')
             [os.remove(f) for f in to_del_files]
 
-
-    with open(input_annotation_file, 'r') as f:
-        annotations = json.load(f)['annotations']
+    with open(input_annotations_file, 'r') as f:
+        annotations = yaml.safe_load(f)
 
     num_examples = min(len(annotations), examples_limit or float('inf'))
     train_size = int(train_split * num_examples)
@@ -123,7 +128,8 @@ def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec
         print(f'Output dir: {tfrecords_out_dir}')
 
         for tfrec_num in range(num_tfrecords):
-            samples = annotations[((start_record+tfrec_num) * num_samples_in_tfrecord): ((start_record+tfrec_num + 1) * num_samples_in_tfrecord)]
+            samples = annotations[((start_record + tfrec_num) * num_samples_in_tfrecord): (
+                    (start_record + tfrec_num + 1) * num_samples_in_tfrecord)]
 
             with tf.io.TFRecordWriter(
                     f'{out_dir}/file_{tfrec_num:02}_{len(samples)}.tfrec'
@@ -138,41 +144,18 @@ def create_tfrecords(input_annotation_file, images_dir, tfrecords_out_dir, tfrec
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--examples_limit", type=int, default=None,
-                        help="limit to num of processed examples")
 
-    parser.add_argument("--out_dir", type=str, default='./dataset/tfrecords',
-                        help='output dir')
-
-    parser.add_argument("--images_dir", type=str, default='/home/ronen/PycharmProjects/shapes-dataset/dataset/images/',
-                        help='input base_dir')
-
-    parser.add_argument("--in_annotations", type=str,
-                        default='/home/ronen/PycharmProjects/shapes-dataset/dataset/annotations/annotations.json',
-                        help='input annotations meta data')
-
-    parser.add_argument("--tfrec_file_size", type=int,
-                        default=4096,
-                        help='number of examples in a tfrec file')
-
-    parser.add_argument("--train_split", type=float,
-                        default=0.7,
-                        help='train_split fraction')
-
-    parser.add_argument("--val_split", type=float,
-                        default=0.2,
-                        help='val_split fraction')
+    parser.add_argument("--config", type=str,
+                        default='config/config.yaml',
+                        help='config file')
 
     args = parser.parse_args()
-    in_annotations = args.in_annotations
-    out_dir = args.out_dir
-    images_dir = args.images_dir
-    tfrec_file_size = args.tfrec_file_size
-    examples_limit = args.examples_limit
-    train_split = args.train_split
-    val_split = args.val_split
-    test_split = max(0, 1-(train_split+val_split))
-    create_tfrecords(in_annotations, images_dir, out_dir, tfrec_file_size, train_split, val_split, examples_limit)
+    config_file = args.config
+
+    with open(config_file, 'r') as stream:
+        configs = yaml.safe_load(stream)
+    create_tfrecords(**configs)
+
     print('Done!')
 
 

@@ -113,7 +113,7 @@ def render_dataset_examples(dataset, class_file):
     colors = list(ImageColor.colormap.values())
     color = colors[0]
     class_text = np.loadtxt(class_file, dtype=str)
-
+    dd = y[..., 4]
     classes = class_text[y[..., 4].numpy().astype(int)]
     annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, bbox[..., 1].numpy(), bbox[..., 0].numpy(),
                                                      color,

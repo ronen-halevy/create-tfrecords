@@ -1,0 +1,6 @@
+---
+tfrecords_dir: './dataset/tfrecords/train' # output dir
+class_file: /home/ronen/PycharmProjects/shapes-dataset/dataset/class.names
+max_boxes: 100 # max bounding boxes in an example image. Ignore objects beyond detected first max
+image_size: 416 #  assumed a squared image
+

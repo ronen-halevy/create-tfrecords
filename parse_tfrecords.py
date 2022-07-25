@@ -14,8 +14,9 @@
 import tensorflow as tf
 from matplotlib import pyplot as plt
 import argparse
+import yaml
 
-from render_dataset import render_dataset_examples
+from render_utils import render_dataset_examples
 
 def parse_tfrecord_fn(record, image_size, max_boxes, class_table=None):
     """
@@ -96,31 +97,17 @@ def parse_tfrecords(tfrecords_dir, image_size, max_boxes, class_file=None):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--tfrecords_dir", type=str,
-                        default='/home/ronen/PycharmProjects/create-tfrecords/dataset/tfrecords/train',
-                        help='path to tfrecords files')
-    parser.add_argument("--limit", type=int, default=None,
-                        help='limit on max input examples')
-    parser.add_argument("--classes", type=str,
-                        default='/home/ronen/PycharmProjects/shapes-dataset/dataset/class.names',
-                        help='path to classes names file needed to annotate plotted objects')
-    parser.add_argument("--max_boxes", type=int, default=100,
-                        help='max bounding boxes in an example image')
-
-    parser.add_argument("--image_size", type=int, default=416,
-                        help='image_size assumed a square')
+    parser.add_argument("--config", type=str,
+                        default='config/parser_config.yaml',
+                        help='config file')
 
     args = parser.parse_args()
+    config_file = args.config
 
-    tfrecords_dir = args.tfrecords_dir
-
-    class_file = args.classes
-    max_boxes = args.max_boxes
-    image_size = args.image_size
-    # tf.config.run_functions_eagerly(False)
-    # tf.data.experimental.enable_debug_mode()
-
-    dataset = parse_tfrecords(tfrecords_dir, image_size, max_boxes, class_file)
+    with open(config_file, 'r') as stream:
+        configs = yaml.safe_load(stream)
+    dataset = parse_tfrecords(**configs)
+    class_file = configs['class_file']
     annotated_text_image = render_dataset_examples(dataset, class_file)
     plt.imshow(annotated_text_image)
     plt.show()
