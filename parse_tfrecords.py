@@ -16,7 +16,7 @@ from matplotlib import pyplot as plt
 import argparse
 import yaml
 
-from render_utils import render_dataset_examples
+from utils.render_utils import render_dataset_examples
 
 def parse_tfrecord_fn(record, image_size, max_boxes, class_table=None):
     """
