@@ -159,10 +159,12 @@ def create_tfrecords(input_annotations_file,
     num_images_in_tfrecord_file = calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
 
     for split_images_list, out_dir in zip([train_images_list, val_images_list, test_images_list], [train_dir, val_dir, test_dir]):
+        # find number of tfrec files needed:
         num_tfrecords_files = int(math.ceil(len(split_images_list) / num_images_in_tfrecord_file))
         print(f'Starting! \nCreating {len(split_images_list)} examples in {num_tfrecords_files} tfrecord files.')
         print(f'Output dir: {tfrecords_out_dir}')
         start_record = 0
+        # calc mum of images per tfrec:
         tfrec_files_sizes = np.tile([len(split_images_list) / num_tfrecords_files], num_tfrecords_files).astype(np.int)
         # spill entries remainder to last tfrecord file:
         tfrec_files_sizes[-1] = tfrec_files_sizes[-1] + (len(split_images_list) -  num_tfrecords_files *sum(tfrec_files_sizes))
