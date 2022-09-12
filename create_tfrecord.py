@@ -166,7 +166,7 @@ def create_tfrecords(input_annotations_file,
         print(f'Output dir: {tfrecords_out_dir}')
         start_record = 0  # todo - check setting of tfrecord file size
         tfrec_files_sizes = np.tile([len(split_images_list) / num_tfrecords_files], num_tfrecords_files).astype(np.int)
-        # solii entries remainder to last tfrecord file:
+        # spill entries remainder to last tfrecord file:
         tfrec_files_sizes[-1] = tfrec_files_sizes[-1] + (len(split_images_list) -  num_tfrecords_files *sum(tfrec_files_sizes))
         for tfrecord_idx, tfrec_file_size in enumerate(tfrec_files_sizes):
             write_tfrecord_file(tfrecord_idx, split_images_list[start_record: tfrec_file_size], annotations_list, images_dir, out_dir, class_names)
