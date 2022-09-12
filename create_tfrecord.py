@@ -152,11 +152,9 @@ def create_tfrecords(input_annotations_file,
 
     num_examples = min(len(annotations['images']), examples_limit or float('inf'))
     images_list = annotations['images'][0:num_examples]
-    train_size = int(train_split * num_examples)
-    val_size = int(val_split * num_examples)
-    train_images_list = images_list[0:train_size]
-    val_images_list = images_list[train_size:train_size+val_size]
-    test_images_list = images_list[train_size+val_size:]
+    # split dataset:
+    train_images_list, remainder = np.split(images_list, [int(train_split * len(images_list))])
+    val_images_list, test_images_list = np.split(remainder, [int((val_split) * len(images_list))])
 
     num_images_in_tfrecord_file = calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
 
