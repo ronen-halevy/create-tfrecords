@@ -135,39 +135,23 @@ def create_tfrecords(input_annotations_file,
 
     with open(input_annotations_file, 'r') as f:
         annotations = json.load(f)
-        # annotations = yaml.safe_load(f)
     annotations_list = annotations['annotations']
-    images_list = annotations['images']
 
     num_examples = min(len(annotations['images']), examples_limit or float('inf'))
     images_list = annotations['images'][0:num_examples]
+
     train_size = int(train_split * num_examples)
     val_size = int(val_split * num_examples)
-    test_size = num_examples - train_size - val_size
     train_list = images_list[0:train_size]
     val_list = images_list[train_size:train_size+val_size]
     test_list = images_list[train_size+val_size:]
 
-
     num_images_in_tfrecord_file = calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
-    # size = 0
-    # for i in imgids:
-    #     img = coco.loadImgs(i)
-    #     fn = img[0]['file_name']
-    #     size += os.path.getsize(img_dir + fn)
-    # avg_size = size / n
-    # limit = int(104857600 // avg_size)
-    # num_of_tfrecords = max(int(len(images_list) // num_images_in_tfrecord_file), 1)
 
     for split_list, out_dir in zip([train_list, val_list, test_list], [train_dir, val_dir, test_dir]):
+
         num_tfrecords = int(math.ceil(len(split_list) / num_images_in_tfrecord_file))
 
-        # num_samples_in_tfrecord = min(tfrec_file_size, split_size)
-        # num_tfrecords = split_size // num_samples_in_tfrecord
-
-        # if split_size % num_tfrecords:
-        #     num_tfrecords += 1
-        # split_annotations = annotations[start_record: min(start_record + num_tfrecords, len(annotations)-1)]
         print(f'Starting! \nCreating {len(split_list)} examples in {num_tfrecords} tfrecord files.')
         print(f'Output dir: {tfrecords_out_dir}')
         start_record = 0  # todo - check setting of tfrecord file size
