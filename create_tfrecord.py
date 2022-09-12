@@ -13,10 +13,11 @@
 import os
 import glob
 import yaml
+import json
 import tensorflow as tf
 import numpy as np
 import argparse
-
+import math
 
 class ExampleProtos:
     @staticmethod
@@ -51,7 +52,7 @@ class ExampleProtos:
         return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
-def create_example(image, example):
+def create_example(image, annotations, class_names):
     """
 
     :param image:
@@ -61,26 +62,47 @@ def create_example(image, example):
     :return:
     :rtype:
     """
-    boxes = np.reshape(example['bboxes'], -1)
-    label = [entry for entry in example['labels']]
+    bboxes = []
+    categories = []
+    for annos in annotations:
+        bboxes.append(annos['bbox'])
+        categories.append(annos['category_id'])
+
+    bboxes = np.array(bboxes)
+    bboxes = np.reshape(bboxes, -1)
+    bboxes = np.array(bboxes)
+    class_names = np.array(class_names)
+    # categories = np.array(categories).astype(np.str)
+    classes = class_names[categories]
+
+
 
     feature = {
         'image/encoded': ExampleProtos.image_feature(image),
-        'image/object/bbox/xmin': ExampleProtos.float_feature_list(boxes[0::4].tolist()),
-        'image/object/bbox/ymin': ExampleProtos.float_feature_list(boxes[1::4].tolist()),
-        'image/object/bbox/xmax': ExampleProtos.float_feature_list(boxes[2::4].tolist()),
-        'image/object/bbox/ymax': ExampleProtos.float_feature_list(boxes[3::4].tolist()),
-        'image/object/class/text': ExampleProtos.bytes_feature_list(label),
+        'image/object/bbox/xmin': ExampleProtos.float_feature_list(bboxes[0::4].tolist()),
+        'image/object/bbox/ymin': ExampleProtos.float_feature_list(bboxes[1::4].tolist()),
+        'image/object/bbox/xmax': ExampleProtos.float_feature_list(bboxes[2::4].tolist()),
+        'image/object/bbox/ymax': ExampleProtos.float_feature_list(bboxes[3::4].tolist()),
+        'image/object/class/text': ExampleProtos.bytes_feature_list(classes),
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
+def calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size):
+    acc_images_size = 0
+    for image_entry in images_list:
+        image_path = images_dir + image_entry['file_name']
+        acc_images_size += os.path.getsize(image_path)
+    avg_image_file_size = acc_images_size / len(images_list)
+    num_images_in_tfrecord_file = int(optimal_file_size // avg_image_file_size)
+    return num_images_in_tfrecord_file
 
 def create_tfrecords(input_annotations_file,
                      images_dir,
                      tfrecords_out_dir,
-                     tfrec_file_size,
+                     optimal_file_size,
                      train_split,
                      val_split,
+                     classes_name_file,
                      examples_limit=None):
     """
 
@@ -97,6 +119,8 @@ def create_tfrecords(input_annotations_file,
     :return:
     :rtype:
     """
+    class_names = [c.strip() for c in open(classes_name_file).readlines()]
+
 
     train_dir = f'{tfrecords_out_dir}/train'
     val_dir = f'{tfrecords_out_dir}/val'
@@ -110,36 +134,45 @@ def create_tfrecords(input_annotations_file,
             [os.remove(f) for f in to_del_files]
 
     with open(input_annotations_file, 'r') as f:
-        annotations = yaml.safe_load(f)
+        annotations = json.load(f)
+        # annotations = yaml.safe_load(f)
+    annotations_list = annotations['annotations']
+    images_list = annotations['images']
 
-    num_examples = min(len(annotations), examples_limit or float('inf'))
+    num_examples = min(len(annotations['images']), examples_limit or float('inf'))
+    images_list = annotations['images'][0:num_examples]
     train_size = int(train_split * num_examples)
     val_size = int(val_split * num_examples)
     test_size = num_examples - train_size - val_size
+    train_list = images_list[0:train_size]
+    val_list = images_list[train_size:train_size+val_size]
+    test_list = images_list[train_size+val_size:]
 
-    start_record = 0
-    for split_size, out_dir in zip([train_size, val_size, test_size], [train_dir, val_dir, test_dir]):
-        num_samples_in_tfrecord = min(tfrec_file_size, split_size)
-        num_tfrecords = split_size // num_samples_in_tfrecord
-        if split_size % num_samples_in_tfrecord:
-            num_tfrecords += 1
+
+    num_images_in_tfrecord_file = calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
+
+    for split_list, out_dir in zip([train_list, val_list, test_list], [train_dir, val_dir, test_dir]):
+        num_tfrecords = int(math.ceil(len(split_list) / num_images_in_tfrecord_file))
+
         # split_annotations = annotations[start_record: min(start_record + num_tfrecords, len(annotations)-1)]
-        print(f'Starting! \nCreating {split_size} examples in {num_tfrecords} tfrecord files.')
+        print(f'Starting! \nCreating {len(split_list)} examples in {num_tfrecords} tfrecord files.')
         print(f'Output dir: {tfrecords_out_dir}')
+        start_record = 0  # todo - check setting of tfrecord file size
+        tfrec_files_sizes = np.tile([len(split_list) / num_tfrecords], num_tfrecords).astype(np.int)
 
-        for tfrec_num in range(num_tfrecords):
-            samples = annotations[((start_record + tfrec_num) * num_samples_in_tfrecord): (
-                    (start_record + tfrec_num + 1) * num_samples_in_tfrecord)]
-
+        tfrec_files_sizes[-1] = tfrec_files_sizes[-1] + (len(split_list) -  num_tfrecords *sum(tfrec_files_sizes))
+        for tfrecord_idx, tfrec_file_size in enumerate(tfrec_files_sizes):
+            image_entries = split_list[start_record:tfrec_file_size]
             with tf.io.TFRecordWriter(
-                    f'{out_dir}/file_{tfrec_num:02}_{len(samples)}.tfrec'
+                    f'{out_dir}/file_{tfrecord_idx:02}_{len(image_entries)}.tfrec'
             ) as writer:
-                for sample in samples:
-                    image_path = images_dir + sample['image_filename']
+               for image_entry in image_entries:
+                    annos = [ anno for anno in annotations_list if anno['image_id'] == image_entry['id'] ]
+                    image_path = images_dir + image_entry['file_name']
                     image = tf.io.decode_jpeg(tf.io.read_file(image_path))
-                    example = create_example(image, sample)
+                    example = create_example(image, annos, class_names)
                     writer.write(example.SerializeToString())
-        start_record = start_record + num_tfrecords
+            start_record = start_record + tfrec_file_size
 
 
 def main():

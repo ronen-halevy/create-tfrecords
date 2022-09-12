@@ -1,8 +1,9 @@
 ---
 examples_limit: null #  limit tp num of processed examples - cut off all above
-tfrecords_out_dir: './dataset/tfrecords' # output dir
-images_dir: ../shapes-dataset/dataset/images/ # input base_dir
-input_annotations_file: /home/ronen/PycharmProjects/shapes-dataset/dataset/annotations/annotations.yaml # input annotations meta data
-tfrec_file_size: 4096 # number of examples in each tfrec file
+tfrecords_out_dir: ./dataset/tfrecords # output dir
+images_dir: ../cocod_shapes_dataset/dataset/images/ # input base_dir
+input_annotations_file: ../cocod_shapes_dataset/dataset/annotations/annotations.json # input annotations meta data
+classes_name_file: ../cocod_shapes_dataset/dataset/class.names
 train_split: 0.7 # train_split fraction
 val_split: 0.2 #val_split fraction. test_split takes the remainder
+optimal_file_size: 104857600 # optimal tfrec file size. Split a larger dataset
