@@ -150,10 +150,23 @@ def create_tfrecords(input_annotations_file,
 
 
     num_images_in_tfrecord_file = calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
+    # size = 0
+    # for i in imgids:
+    #     img = coco.loadImgs(i)
+    #     fn = img[0]['file_name']
+    #     size += os.path.getsize(img_dir + fn)
+    # avg_size = size / n
+    # limit = int(104857600 // avg_size)
+    # num_of_tfrecords = max(int(len(images_list) // num_images_in_tfrecord_file), 1)
 
     for split_list, out_dir in zip([train_list, val_list, test_list], [train_dir, val_dir, test_dir]):
         num_tfrecords = int(math.ceil(len(split_list) / num_images_in_tfrecord_file))
 
+        # num_samples_in_tfrecord = min(tfrec_file_size, split_size)
+        # num_tfrecords = split_size // num_samples_in_tfrecord
+
+        # if split_size % num_tfrecords:
+        #     num_tfrecords += 1
         # split_annotations = annotations[start_record: min(start_record + num_tfrecords, len(annotations)-1)]
         print(f'Starting! \nCreating {len(split_list)} examples in {num_tfrecords} tfrecord files.')
         print(f'Output dir: {tfrecords_out_dir}')
@@ -172,6 +185,7 @@ def create_tfrecords(input_annotations_file,
                     image = tf.io.decode_jpeg(tf.io.read_file(image_path))
                     example = create_example(image, annos, class_names)
                     writer.write(example.SerializeToString())
+
             start_record = start_record + tfrec_file_size
 
 
@@ -187,6 +201,7 @@ def main():
 
     with open(config_file, 'r') as stream:
         configs = yaml.safe_load(stream)
+
     create_tfrecords(**configs)
 
     print('Done!')
