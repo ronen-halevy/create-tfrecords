@@ -52,7 +52,7 @@ class ExampleProtos:
         return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
-def create_example(image, annotations, class_names):
+def create_example(image, annotations, class_names, sparse_to_dense_category_id, width, height):
     """
 
     :param image:
@@ -64,26 +64,26 @@ def create_example(image, annotations, class_names):
     """
     bboxes = []
     categories = []
-    for annos in annotations:
-        bboxes.append(annos['bbox'])
-        categories.append(annos['category_id'])
+    for annot in annotations:
+        bboxes.append(annot['bbox'])
+        categories.append(sparse_to_dense_category_id[annot['category_id']]) # trnaslated to dense category id (no holess in numbering sequence)
 
-    bboxes = np.array(bboxes)
+    scale = np.array([width, height, width, height])
+    bboxes = np.array(bboxes)/scale
     bboxes = np.reshape(bboxes, -1)
-    bboxes = np.array(bboxes)
     class_names = np.array(class_names)
-    # categories = np.array(categories).astype(np.str)
     classes = class_names[categories]
-
-
+    bbox_width = np.array(bboxes[2::4]).astype(float)
+    bbox_height = np.array(bboxes[3::4]).astype(float)
 
     feature = {
         'image/encoded': ExampleProtos.image_feature(image),
         'image/object/bbox/xmin': ExampleProtos.float_feature_list(bboxes[0::4].tolist()),
         'image/object/bbox/ymin': ExampleProtos.float_feature_list(bboxes[1::4].tolist()),
-        'image/object/bbox/xmax': ExampleProtos.float_feature_list(bboxes[2::4].tolist()),
-        'image/object/bbox/ymax': ExampleProtos.float_feature_list(bboxes[3::4].tolist()),
+        'image/object/bbox/xmax': ExampleProtos.float_feature_list((bboxes[0::4] + (bbox_width)).tolist()),
+        'image/object/bbox/ymax': ExampleProtos.float_feature_list((bboxes[1::4] + (bbox_height)).tolist()),
         'image/object/class/text': ExampleProtos.bytes_feature_list(classes),
+        'image/object/class/id': ExampleProtos.float_feature_list(categories),
     }
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
@@ -98,15 +98,18 @@ def calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size)
 
 
 
-def write_tfrecord_file(tfrecord_idx, image_entries, annotations_list, images_dir, out_dir, class_names):
+def write_tfrecord_file(tfrecord_idx, image_entries, annotations_list, images_dir, out_dir, class_names, sparse_to_dense_category_id):
+
     with tf.io.TFRecordWriter(
             f'{out_dir}/file_{tfrecord_idx:02}_{len(image_entries)}.tfrec'
     ) as writer:
         for image_entry in image_entries:
-            annos = [anno for anno in annotations_list if anno['image_id'] == image_entry['id']]
+            annots = [anno for anno in annotations_list if anno['image_id'] == image_entry['id']]
             image_path = images_dir + image_entry['file_name']
             image = tf.io.decode_jpeg(tf.io.read_file(image_path))
-            example = create_example(image, annos, class_names)
+            im_width = image_entry['width']
+            im_height = image_entry['height']
+            example = create_example(image, annots, class_names, sparse_to_dense_category_id, im_width, im_height)
             writer.write(example.SerializeToString())
 
 def create_tfrecords(input_annotations_file,
@@ -148,10 +151,13 @@ def create_tfrecords(input_annotations_file,
 
     with open(input_annotations_file, 'r') as f:
         annotations = json.load(f)
-    annotations_list = annotations['annotations']
 
+    annotations_list = annotations['annotations']
     num_examples = min(len(annotations['images']), examples_limit or float('inf'))
     images_list = annotations['images'][0:num_examples]
+    categories_list = annotations['categories']
+    sparse_to_dense_category_id = {category['id']: index for index, category in enumerate(categories_list)}
+
     # split dataset:
     train_images_list, remainder = np.split(images_list, [int(train_split * len(images_list))])
     val_images_list, test_images_list = np.split(remainder, [int((val_split) * len(images_list))])
@@ -165,13 +171,18 @@ def create_tfrecords(input_annotations_file,
         print(f'Output dir: {tfrecords_out_dir}')
         start_record = 0
         # calc mum of images per tfrec:
-        tfrec_files_sizes = np.tile([len(split_images_list) / num_tfrecords_files], num_tfrecords_files).astype(np.int)
+        tfrec_files_sizes = np.tile([len(split_images_list) / num_tfrecords_files], num_tfrecords_files).astype(int)
         # spill entries remainder to last tfrecord file:
         tfrec_files_sizes[-1] = tfrec_files_sizes[-1] + (len(split_images_list) -  num_tfrecords_files *sum(tfrec_files_sizes))
         for tfrecord_idx, tfrec_file_size in enumerate(tfrec_files_sizes):
-            write_tfrecord_file(tfrecord_idx, split_images_list[start_record: tfrec_file_size], annotations_list, images_dir, out_dir, class_names)
+            write_tfrecord_file(tfrecord_idx, split_images_list[start_record: tfrec_file_size], annotations_list, images_dir, out_dir, class_names, sparse_to_dense_category_id)
             start_record = start_record + tfrec_file_size
 
+    # save a copy of class names file here:
+    class_name_path = f'{tfrecords_out_dir}/class.names'
+    with open(class_name_path, 'w') as f:
+        for class_name in class_names:
+            f.write("%s\n" % class_name)
 
 def main():
     parser = argparse.ArgumentParser()

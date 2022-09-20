@@ -14,7 +14,7 @@ from PIL import Image
 from PIL import ImageColor
 from PIL import ImageDraw
 from PIL import ImageFont
-
+import tensorflow as tf
 
 def draw_text_on_bounding_box(image, ymin, xmin, color, display_str_list=(), font_size=30):
     """
@@ -100,11 +100,10 @@ def render_dataset_examples(dataset, class_file):
     data = dataset.take(1)
     image, y = next(iter(data))
 
-    y = y[y[..., 2].numpy() != 0]  # remove padding
-    import tensorflow as tf
+    y = y[y[..., 2].numpy() != 0]  # remove padding bboxes (check if xmax=0)
     height, width = image.numpy().shape[0], image.numpy().shape[1]
     rescale_bbox = tf.tile(tf.convert_to_tensor([[width, height, width, height]], tf.float32), [y.shape[0], 1])
-    bbox = tf.round(tf.math.multiply(y[:, 0:4], rescale_bbox))
+    bbox = (tf.math.multiply(y[:, 0:4], rescale_bbox))
 
     image_pil = Image.fromarray(np.uint8(image.numpy() * 255))
     annotated_bbox_image = draw_bounding_box(image_pil, bbox[..., 0:4], color=(255, 255, 0),
@@ -113,7 +112,10 @@ def render_dataset_examples(dataset, class_file):
     colors = list(ImageColor.colormap.values())
     color = colors[0]
     class_text = np.loadtxt(class_file, dtype=str)
-    dd = y[..., 4]
+    # handle case of a single class - it is not read as an array, so make it an array anyway:
+    if len(class_text.shape) == 0:
+        class_text = np.array([class_text])
+
     classes = class_text[y[..., 4].numpy().astype(int)]
     annotated_text_image = draw_text_on_bounding_box(annotated_bbox_image, bbox[..., 1].numpy(), bbox[..., 0].numpy(),
                                                      color,
