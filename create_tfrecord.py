@@ -73,15 +73,14 @@ def create_example(image, annotations, class_names, sparse_to_dense_category_id,
     bboxes = np.reshape(bboxes, -1)
     class_names = np.array(class_names)
     classes = class_names[categories]
-    bbox_width = np.array(bboxes[2::4]).astype(float)
-    bbox_height = np.array(bboxes[3::4]).astype(float)
-
+    xmax = bboxes[0::4] + np.array(bboxes[2::4].astype(float))
+    ymax = bboxes[1::4] + np.array(bboxes[3::4]).astype(float)
     feature = {
         'image/encoded': ExampleProtos.image_feature(image),
         'image/object/bbox/xmin': ExampleProtos.float_feature_list(bboxes[0::4].tolist()),
         'image/object/bbox/ymin': ExampleProtos.float_feature_list(bboxes[1::4].tolist()),
-        'image/object/bbox/xmax': ExampleProtos.float_feature_list((bboxes[0::4] + (bbox_width)).tolist()),
-        'image/object/bbox/ymax': ExampleProtos.float_feature_list((bboxes[1::4] + (bbox_height)).tolist()),
+        'image/object/bbox/xmax': ExampleProtos.float_feature_list(xmax.tolist()),
+        'image/object/bbox/ymax': ExampleProtos.float_feature_list(ymax.tolist()),
         'image/object/class/text': ExampleProtos.bytes_feature_list(classes),
         'image/object/class/id': ExampleProtos.float_feature_list(categories),
     }
