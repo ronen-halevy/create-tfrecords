@@ -87,12 +87,12 @@ def create_example(image, annotations, class_names, sparse_to_dense_category_id,
     return tf.train.Example(features=tf.train.Features(feature=feature))
 
 def calc_num_images_in_tfrecord_file(images_list, images_dir, optimal_file_size):
-    acc_images_size = 0
+    acc_img_size = 0
     for image_entry in images_list:
-        image_path = images_dir + image_entry['file_name']
-        acc_images_size += os.path.getsize(image_path)
-    avg_image_file_size = acc_images_size / len(images_list)
-    num_images_in_tfrecord_file = int(optimal_file_size // avg_image_file_size)
+        img_path = f'{images_dir}/{image_entry["file_name"]}'
+        acc_img_size += os.path.getsize(img_path)
+    avg_img_file_size = acc_img_size / len(images_list)
+    num_images_in_tfrecord_file = int(optimal_file_size // avg_img_file_size)
     return num_images_in_tfrecord_file
 
 
@@ -103,12 +103,12 @@ def write_tfrecord_file(tfrecord_idx, image_entries, annotations_list, images_di
             f'{out_dir}/file_{tfrecord_idx:02}_{len(image_entries)}.tfrec'
     ) as writer:
         for image_entry in image_entries:
-            annots = [anno for anno in annotations_list if anno['image_id'] == image_entry['id']]
-            image_path = images_dir + image_entry['file_name']
-            image = tf.io.decode_jpeg(tf.io.read_file(image_path))
-            im_width = image_entry['width']
-            im_height = image_entry['height']
-            example = create_example(image, annots, class_names, sparse_to_dense_category_id, im_width, im_height)
+            img_annots = [anno for anno in annotations_list if anno['image_id'] == image_entry['id']]
+            img_path = +f'{images_dir}/{image_entry["file_name"]}'
+            image = tf.io.decode_jpeg(tf.io.read_file(img_path))
+            img_width = image_entry['width']
+            img_height = image_entry['height']
+            example = create_example(image, img_annots, class_names, sparse_to_dense_category_id, img_width, img_height)
             writer.write(example.SerializeToString())
 
 def create_tfrecords(input_annotations_file,
