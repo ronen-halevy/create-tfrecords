@@ -1,9 +1,13 @@
 ---
 examples_limit: null #  limit tp num of processed examples - cut off all above
-tfrecords_out_dir: ./dataset/tfrecords # output dir
-images_dir: ../cocod_shapes_dataset/dataset/images/ # input base_dir
-input_annotations_file: ../cocod_shapes_dataset/dataset/annotations/annotations.json # input annotations meta data
-classes_name_file: ../cocod_shapes_dataset/dataset/class.names
-train_split: 0.7 # train_split fraction
-val_split: 0.2 #val_split fraction. test_split takes the remainder
+out_dir: ./dataset/tfrecords # output dir
+base_input_dir: /home/ronen/PycharmProjects/cocod_shapes_dataset/dataset #/home/ronen/fiftyone/coco-2017/validation/data # datasets/coco2012/images
+input_annotations_file: annotations.json # /home/ronen/fiftyone/coco-2017/validation/labels.json # datasets/coco2012/
+
+splits:
+  - train
+  - valid
+  - test
+
+classes_name_file:  /home/ronen/fiftyone/coco-2017/coco.names
 optimal_file_size: 104857600 # optimal tfrec file size. Split a larger dataset
